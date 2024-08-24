@@ -1,5 +1,6 @@
 import json
 import requests
+from utils.logger import Logger
 from requests_oauthlib import OAuth1Session
 
 
@@ -19,13 +20,17 @@ class TwitterAuth(OAuth1Session):
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as http_err:
+            Logger.error(f'HTTP error occurred: {http_err}')
             raise ValueError(f'HTTP error occurred: {http_err}')
         except requests.exceptions.RequestException as req_err:
+            Logger.error(f'Request error occurred: {req_err}')
             raise ValueError(f'Request error occurred: {req_err}')
         except Exception as e:
+            Logger.error(f'An unexpected error occurred: {str(e)}')
             raise ValueError(f'An unexpected error occurred: {str(e)}')
 
     def post_tweet(self, text):
         url = "https://api.twitter.com/2/tweets"
         payload = self.create_payload(text)
         self.perform_request(url, payload)
+        Logger.info(f'Tweet posted!')

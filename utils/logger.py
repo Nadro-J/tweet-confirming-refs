@@ -2,14 +2,27 @@ import os
 import sys
 import logging
 import inspect
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 
 class Logger:
     @staticmethod
+    def delete_old_logs(output_dir, days_to_keep=30):
+        now = datetime.now()
+        for filename in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            if os.path.isfile(file_path):
+                creation_date = datetime.fromtimestamp(os.path.getctime(file_path))
+                if now - creation_date > timedelta(days=days_to_keep):
+                    os.remove(file_path)
+
+    @staticmethod
     def configure(log_level, filename_prefix, output_dir="./logs"):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+
+        Logger.delete_old_logs(output_dir)
 
         # Include a timestamp in the log file name
         timestamp = datetime.now().strftime("%Y-%m-%d")
