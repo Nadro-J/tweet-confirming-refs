@@ -2,11 +2,13 @@ import os
 import time
 import json
 from utils.twitter import *
+from utils.discord_lite import *
 from dotenv import load_dotenv
 from utils.logger import Logger
 from utils.datamanager import DataManager
 from substrateinterface import SubstrateInterface
 from websocket._exceptions import WebSocketException
+from utils.gov_platforms import fetch_referendum_data
 
 
 class ConfirmingReferendums:
@@ -133,20 +135,25 @@ class ConfirmingReferendums:
                     if index not in cached_conf_refs or confirming[1] <= 2 and confirming[0] == 0:
                         Logger.info("Preparing tweet")
 
-                        if confirming[1] <= 6:
+                        final_3hr_confirmation = None
+                        if confirming[1] <= 6 and confirming[0] == 0:
                             final_3hr_confirmation = '🔥'
-
+                        gov_platform_data = fetch_referendum_data(referendum_id=index, network=os.environ['CHAIN'])
                         twitter = TwitterAuth(os.environ['CONSUMER_KEY'], os.environ['CONSUMER_SECRET'],
                                               os.environ['ACCESS_TOKEN'], os.environ['ACCESS_TOKEN_SECRET'])
-                        tweet = (f'✅ Referendum #{index} is confirming in {days}d {hours}hrs {minutes}mins {final_3hr_confirmation + "\n\n" if final_3hr_confirmation is not None else ""}\n\n'
-                                 f'Have you voted yet?\n\n'
+
+                        final_3hr_confirmation = final_3hr_confirmation if final_3hr_confirmation is not None else ""
+                        tweet = (f'{gov_platform_data["title"]} #{index} is confirming in {days}d {hours}hrs {minutes}mins\n\n'
                                  f'https://polkadot.subsquare.io/referenda/{index}'
-                                 f'\n#Polkadot #Governance')
+                                 f'\n#Polkadot #Governance {final_3hr_confirmation}')
+
+                        send_discord_webhook(os.environ['WEBHOOK'], title="Confirming Referendum Alert", content=tweet, username="Confirming Referendum", as_embed=True)
 
                         twitter.post_tweet(text=tweet)
-                        Logger.info(f"Tweet executed for ref {index}! sleeping for 3 seconds...")
-                        time.sleep(3)
+                        Logger.info(f"Tweet executed for ref {index}! sleeping for 5 seconds...")
+                        time.sleep(5)
 
+        auto_publish_unpublished_messages(os.environ['PUBLISHING_BOT_TOKEN'], os.environ['ANNOUNCEMENT_CHANNEL'])
         DataManager.save_data_to_cache(filename='./data/confirmations.json', data=cache_confirmations)
         return cache_confirmations
 
